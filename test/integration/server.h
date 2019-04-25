@@ -13,6 +13,7 @@
 #include "common/common/lock_guard.h"
 #include "common/common/logger.h"
 #include "common/common/thread.h"
+#include "common/stats/histogram_impl.h"
 #include "common/stats/source_impl.h"
 
 #include "server/listener_hooks.h"
@@ -116,13 +117,64 @@ private:
   StatsOptionsImpl stats_options_;
 };
 
+class TestHistogramStatistics : public HistogramStatistics {
+public:
+  // Stats::HistogramStatistics
+  std::string quantileSummary() const override { return ""; }
+  std::string bucketSummary() const override { return ""; }
+  const std::vector<double>& supportedQuantiles() const override { return std::vector<double>(); }
+  const std::vector<double>& computedQuantiles() const override { return std::vector<double>(); }
+  const std::vector<double>& supportedBuckets() const override { return std::vector<double>(); }
+  const std::vector<uint64_t>& computedBuckets() const override { return std::vector<double>(); }
+  uint64_t sampleCount() const override { return sample_count_; }
+  double sampleSum() const override { return sample_sum_; }
+private:
+  friend class TestParentHistogram;
+  uint64_t sample_count_;
+  double sample_sum_;
+};
+
+class TestParentHistogram : public ParentHistogram {
+public:
+  TestParentHistogram(const std::string& name, Store& parent)
+    : histogram_(name, parent, std::string(name), std::vector<Tag>()) {}
+
+  // Stats::Metric
+  std::string name() const override { return histogram_.name(); }
+  const char* nameCStr() const override { return histogram_.nameCStr(); }
+  const std::vector<Tag>& tags() const override { return histogram_.tags(); }
+  const std::string& tagExtractedName() const override { return histogram_.tagExtractedName(); }
+  bool used() const override { return histogram_.used(); }
+
+  // Stats::Histogram
+  void recordValue(uint64_t value) override {
+    histogram_.recordValue(value);
+    stats_.sample_count_++;
+    stats_.sample_sum_ += value;
+  }
+
+  // Stats::ParentHistogram
+  void merge() override {}
+  const HistogramStatistics& intervalStatistics() const override { return stats_; }
+  const HistogramStatistics& cumulativeStatistics() const override { return stats_; }
+  const std::string quantileSummary() const override { return ""; }
+  const std::string bucketSummary() const override { return ""; }
+
+private:
+  HistogramImpl histogram_;
+  TestHistogramStatistics stats_;
+};
+
 /**
  * This is a variant of the isolated store that has locking across all operations so that it can
  * be used during the integration tests.
  */
 class TestIsolatedStoreImpl : public StoreRoot {
 public:
-  TestIsolatedStoreImpl() : source_(*this) {}
+  TestIsolatedStoreImpl()
+    : histograms_([this](const std::string& name) {
+      return std::make_shared<TestParentHistogram>(name, *this);
+    }), source_(*this) {}
   // Stats::Scope
   Counter& counterFromStatName(StatName name) override {
     Thread::LockGuard lock(lock_);
@@ -185,6 +237,7 @@ public:
 private:
   mutable Thread::MutexBasicLockable lock_;
   IsolatedStoreImpl store_;
+  IsolatedStatsCache<ParentHistogram> histograms_;
   SourceImpl source_;
   StatsOptionsImpl stats_options_;
 };
