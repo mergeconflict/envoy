@@ -12,6 +12,7 @@ API
 ASAN
 ASCII
 ASSERTs
+AST
 AWS
 BSON
 CB
@@ -435,6 +436,7 @@ evthread
 evwatch
 exe
 execlp
+extensibility
 facto
 favicon
 fd

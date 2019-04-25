@@ -411,6 +411,86 @@ message HttpConnectionManager {
   // Note that Envoy does not perform
   // `case normalization <https://tools.ietf.org/html/rfc3986#section-6.2.2.1>`
   google.protobuf.BoolValue normalize_path = 30;
+
+  // AST for user-defined debug options.
+  message DebugOptionDefinition {
+    // A name for this debug option definition, that can be referenced later in `debug_options`.
+    string name = 1;
+
+    // The criteria determining which streams the debug action should apply to.
+    message Match {
+      // A list of matches (used in `all_of` and `any_of`).
+      message MatchList {
+        repeated Match criteria = 1;
+      };
+
+      // An HTTP message header.
+      message Header {
+        string name = 1;
+        string value = 2;
+      };
+
+      // Request type: a request is considered "internal" if the
+      // :ref:`x-envoy-internal<config_http_conn_man_headers_x-envoy-internal>` header is set to
+      // `true`. If it's not set, or set to any other value, the request is considered external.
+      enum RequestType {
+        INTERNAL = 0;
+        EXTERNAL = 1;
+      };
+
+      // TODO(mergeconflict): `oneof` doesn't allow repeated fields, which is why I've defined
+      // MatchList, rather than `repeated Match` for `all_of` and `any_of`. Is there a better way
+      // to define this?
+      oneof match_type {
+        // Matches if all criteria in the list are satisfied.
+        MatchList all_of = 1;
+
+        // Matches if any criteria in the list are satisfied.
+        MatchList any_of = 2;
+
+        // Matches if the contained match is not satisfied.
+        Match is_not = 3;
+
+        // Matches if the request has the given type.
+        RequestType request_type = 4;
+
+        // Matches if the request has a header matching the name and, optionally, value.
+        Header request_header = 5;
+      }
+    };
+    Match match = 2;
+
+    // An action to perform if the match criteria are satisfied for a given stream.
+    message Action {
+      // Configuration for the "do-not-forward" action. Defined as an empty message rather than
+      // `google.protobuf.Empty` for extensibility.
+      message DoNotForward {
+      };
+
+      // Configuration for the "add-upstream-cluster" action. Defined as an empty message rather
+      // than `google.protobuf.Empty` for extensibility.
+      message AddUpstreamCluster {
+      };
+
+      oneof action_type {
+        // Envoy will not forward the request upstream. It will respond locally with a 204 "no
+        // content." This can be combined with other actions. For example, combining it with
+        // add_upstream_cluster lets you determine what cluster the request would have been routed
+        // to if it had been sent.
+        DoNotForward do_not_forward = 1;
+
+        // Adds the `x-envoy-upstream-cluster` header to the response, indicating which upstream
+        // cluster the request is forwarded to.
+        AddUpstreamCluster add_upstream_cluster = 2;
+      }
+    };
+    repeated Action actions = 3;
+  };
+  repeated DebugOptionDefinition debug_option_definitions = 32;
+
+  // A set of names of previously-defined debug options that should apply to all streams served by
+  // this HTTP connection manager.
+  repeated string debug_options = 33;
 }
 
 message Rds {
