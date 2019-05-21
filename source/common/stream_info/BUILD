@@ -28,6 +28,16 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
+    name = "matcher_lib",
+    srcs = ["matcher_impl.cc"],
+    hdrs = ["matcher_impl.h"],
+    deps = [
+        "//include/envoy/http:header_map_interface",
+        "//include/envoy/stream_info:matcher_interface",
+    ],
+)
+
+envoy_cc_library(
     name = "utility_lib",
     srcs = ["utility.cc"],
     hdrs = ["utility.h"],

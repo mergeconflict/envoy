@@ -10,6 +10,7 @@
 #include "envoy/http/protocol.h"
 #include "envoy/ssl/connection.h"
 #include "envoy/stream_info/filter_state.h"
+#include "envoy/stream_info/matcher.h"
 #include "envoy/upstream/host_description.h"
 
 #include "common/common/assert.h"
@@ -466,6 +467,12 @@ public:
    *         failed.
    */
   virtual const std::string& upstreamTransportFailureReason() const PURE;
+
+  /**
+   * @param name The name of the matcher requested.
+   * @return Matcher* the requested matcher, if available, or nullptr if not defined.
+   */
+  virtual const Matcher* matcher(absl::string_view name) const PURE;
 };
 
 } // namespace StreamInfo

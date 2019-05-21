@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+import "envoy/api/v2/route/route.proto";
+
+import "validate/validate.proto";
+
+package envoy.config.common.http.matchers.v2alpha;
+
+option java_outer_classname = "MatchersProto";
+option java_multiple_files = true;
+option java_package = "io.envoyproxy.envoy.config.common.http.matchers.v2alpha";
+
+message MatcherList {
+  repeated Matcher matchers = 1 [(validate.rules).repeated .min_items = 2];
+}
+
+message Matcher {
+  oneof matcher_type {
+    option (validate.required) = true;
+
+    MatcherList match_all = 1;
+    MatcherList match_any = 2;
+    Matcher match_not = 3;
+    api.v2.route.HeaderMatcher match_request_header = 4;
+    api.v2.route.HeaderMatcher match_request_trailer = 5;
+    api.v2.route.HeaderMatcher match_response_header = 6;
+    api.v2.route.HeaderMatcher match_response_trailer = 7;
+  }
+}

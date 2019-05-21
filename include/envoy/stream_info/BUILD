@@ -14,6 +14,7 @@ envoy_cc_library(
     external_deps = ["abseil_optional"],
     deps = [
         ":filter_state_interface",
+        ":matcher_interface",
         "//include/envoy/common:time_interface",
         "//include/envoy/http:protocol_interface",
         "//include/envoy/ssl:connection_interface",
@@ -28,4 +29,9 @@ envoy_cc_library(
     name = "filter_state_interface",
     hdrs = ["filter_state.h"],
     external_deps = ["abseil_optional"],
+)
+
+envoy_cc_library(
+    name = "matcher_interface",
+    hdrs = ["matcher.h"],
 )
